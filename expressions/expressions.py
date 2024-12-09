@@ -1,5 +1,6 @@
 """Implements an expression tree class hierarchy."""
 import numbers
+from functools import singledispatch
 
 
 class Expression:
@@ -90,14 +91,14 @@ class Operator(Expression):
 
     def __str__(self):
         """Define string representation."""
-        if self.operands[0].precedence < self.precedence:
-            string1 = f"({str(self.operands[0])})"
-        else:
+        if isinstance(self.operands[0], int) or self.operands[0].precedence >= self.precedence:
             string1 = f"{str(self.operands[0])}"
-        if self.operands[1].precedence < self.precedence:
-            string2 = f"({str(self.operands[1])})"
         else:
+            string1 = f"({str(self.operands[0])})"
+        if isinstance(self.operands[1], int) or self.operands[1].precedence >= self.precedence:
             string2 = f"{str(self.operands[1])}"
+        else:
+            string2 = f"({str(self.operands[1])})"
         return string1 + f" {self.symbol} " + string2
 
 
@@ -183,3 +184,71 @@ class Symbol(Terminal):
             raise TypeError("Value must be a string.")
         else:
             super().__init__(value)
+
+
+def postvisitor(expr, fn, **kwargs):
+    """Visit an expression in postorder applying a function to every node."""
+    stack = []
+    visited = {}
+
+    stack.append(expr)
+    while stack:
+        e = stack.pop()
+        unvisited_children = []
+        for o in e.operands:
+            if o not in visited:
+                unvisited_children.append(o)
+
+        if unvisited_children:
+            stack.append(e)
+            stack.extend(unvisited_children)
+        else:
+            visited[e] = fn(e, *(visited[o] for o in e.operands), **kwargs)
+
+    return visited[expr]
+
+
+@singledispatch
+def differentiate(expr, *o, **kwags):
+    """Differentiate an expression node."""
+    raise NotImplementedError(f"Cannot evaluate a {type(expr).__name__}")
+
+
+@differentiate.register(Number)
+def _(expr, *o, **kwags):
+    return Number(0)
+
+
+@differentiate.register(Symbol)
+def _(expr, *o, **kwags):
+    if expr.value == kwags["var"]:
+        return Number(1.)
+    else:
+        return Number(0.)
+
+
+@differentiate.register(Add)
+def _(expr, *o, **kwags):
+    return Add(o[0], o[1])
+
+
+@differentiate.register(Sub)
+def _(expr, *o, **kwags):
+    return Sub((o[0], o[1]))
+
+
+@differentiate.register(Mul)
+def _(expr, *o, **kwags):
+    return Add(Mul(o[0], expr.operands[1]), Mul(o[1], expr.operands[0]))
+
+
+@differentiate.register(Div)
+def _(expr, *o, **kwags):
+    return Div(Sub(Mul(o[0], expr.operands[1]), Mul(expr.operands[0], o[1])),
+               Pow(expr.operands[1], 2))
+
+
+@differentiate.register(Pow)
+def _(expr, *o, **kwags):
+    return Mul(Mul(expr.operands[1], o[0]),
+               Pow((expr.operands[0], expr.operands[1]-1)))

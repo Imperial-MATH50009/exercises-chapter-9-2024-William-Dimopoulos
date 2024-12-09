@@ -1,1 +1,1 @@
-from .expressions import Expression, Symbol, Number, Add, Sub, Mul, Div, Pow  # Noqa F104
+from .expressions import Expression, Symbol, Number, Add, Sub, Mul, Div, Pow, postvisitor, differentiate  # Noqa F104
