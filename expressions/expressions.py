@@ -91,11 +91,13 @@ class Operator(Expression):
 
     def __str__(self):
         """Define string representation."""
-        if isinstance(self.operands[0], int) or self.operands[0].precedence >= self.precedence:
+        if isinstance(self.operands[0], int) or \
+                self.operands[0].precedence >= self.precedence:
             string1 = f"{str(self.operands[0])}"
         else:
             string1 = f"({str(self.operands[0])})"
-        if isinstance(self.operands[1], int) or self.operands[1].precedence >= self.precedence:
+        if isinstance(self.operands[1], int) or \
+                self.operands[1].precedence >= self.precedence:
             string2 = f"{str(self.operands[1])}"
         else:
             string2 = f"({str(self.operands[1])})"
