@@ -6,9 +6,13 @@ from functools import singledispatch
 class Expression:
     """Expression class."""
 
-    def __init__(self, precedence, tuple=()):
+    def __init__(self, precedence, o=()):
         """Define constructor."""
-        self.operands = tuple
+        operands = list(o)
+        for n in range(len(operands)):
+            if isinstance(operands[n], int):
+                operands[n] = Number(operands[n])
+        self.operands = tuple(operands)
         self.precedence = precedence
 
     def __add__(self, other):
@@ -197,6 +201,7 @@ def postvisitor(expr, fn, **kwargs):
     while stack:
         e = stack.pop()
         unvisited_children = []
+
         for o in e.operands:
             if o not in visited:
                 unvisited_children.append(o)
@@ -204,6 +209,7 @@ def postvisitor(expr, fn, **kwargs):
         if unvisited_children:
             stack.append(e)
             stack.extend(unvisited_children)
+
         else:
             visited[e] = fn(e, *(visited[o] for o in e.operands), **kwargs)
 
@@ -211,13 +217,13 @@ def postvisitor(expr, fn, **kwargs):
 
 
 @singledispatch
-def differentiate(expr, *o, **kwags):
+def differentiate(expr, o=(), **kwags):
     """Differentiate an expression node."""
     raise NotImplementedError(f"Cannot evaluate a {type(expr).__name__}")
 
 
 @differentiate.register(Number)
-def _(expr, *o, **kwags):
+def _(expr, **kwags):
     return Number(0)
 
 
@@ -253,4 +259,4 @@ def _(expr, *o, **kwags):
 @differentiate.register(Pow)
 def _(expr, *o, **kwags):
     return Mul(Mul(expr.operands[1], o[0]),
-               Pow((expr.operands[0], expr.operands[1]-1)))
+               Pow(expr.operands[0], expr.operands[1]-1))
